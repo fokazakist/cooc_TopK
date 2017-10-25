@@ -7,7 +7,7 @@
 extern "C" {
 #include "../glpk-4.8/include/glpk.h"
 }
-#define OPT " [-m minsup] [-x maxpat] [-w wildcard] [-n v] [-e conv_epsilon] [-o] graph-file"
+#define OPT " [-m minsup] [-x maxpat] [-w wildcard] [-n v] [-l lambda] [-s maxpat_cooc] [-k Top-K] [-e conv_epsilon] [-o] graph-file"
 #define ROW(i) ((i)+1)
 #define COL(j) ((j)+1)
 
@@ -24,10 +24,12 @@ int main(int argc, char **argv) {
   double conv_epsilon = 1e-2;
   bool cooc = false;
   unsigned int cmaxpat = 8;
+  int topK = 10;
+  double lambda = 0.1;
 
   //clock_t allstart, allend;
 
-  while ((opt = getopt(argc, argv, "m:p:w:e:n:x:s:io")) != -1) {
+  while ((opt = getopt(argc, argv, "m:p:w:e:n:x:s:l:k:l:io")) != -1) {
     switch (opt) {
     case 'm':
       minsup = atoi (optarg);
@@ -44,6 +46,12 @@ int main(int argc, char **argv) {
       break;
     case 'x':
       maxpat = atoi (optarg);
+      break;
+    case 'k':
+      topK = atoi (optarg);
+      break;
+    case 'l':
+      lambda = atoi (optarg);
       break;
     case 's':
       cmaxpat = atoi (optarg);
@@ -76,7 +84,9 @@ int main(int argc, char **argv) {
   Gspan gspan;
   gspan.wildcard_r = wildcard_num;
   gspan.maxpat = maxpat;
-  gspan.cmaxpat = maxpat;
+  gspan.cmaxpat = cmaxpat;
+  gspan.topK = topK;
+  gspan.lambda = lambda;
   gspan.out_instances = out_instances;
   gspan.max_itr = maxitr;
   
@@ -90,7 +100,10 @@ int main(int argc, char **argv) {
   }
   gspan.lpboost();
   
-  std::cout << "Given options::" << "maxpat: " << maxpat << " minsup: " << gspan.minsup << " nu: " << nu << " conv_epsilon: " << conv_epsilon <<" maxitr: " << maxitr << std::endl;
+  std::cout << "Given options::" << "maxpat: " << maxpat << " nu: " << nu << std::endl;
+  std::cout << "Top-K options::" << "lambda: " << lambda << " K: "  << topK << std::endl;
+  //value = |gain| + lambda * |bound|
+  //std::cout << "Given options::" << " minsup: " << gspan.minsup << " conv_epsilon: " << conv_epsilon <<" maxitr: " << maxitr << std::endl;
   Rdelete(gspan.croot);
   return 0;
 }

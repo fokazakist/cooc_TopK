@@ -8,6 +8,7 @@
 #include <iostream>
 #include <ext/hash_map>
 #include <math.h>
+#include <queue>
 
 using std::map;
 using std::list;
@@ -189,6 +190,17 @@ struct CDPat{//discrimination pattern
 
 void update(DPat&);
 void update(CDPat&);
+
+class pqdpt{
+ public:
+  double value;
+  Ctree* dptplace;
+};
+struct comp {
+  bool operator()(pqdpt x, pqdpt y) const {
+    return x.value < y.value;
+  }
+};
 class Gspan {
  private:
   bool is_min();
@@ -244,6 +256,16 @@ class Gspan {
   void edge_grow_cooc_(Ctree&,Ctree&);//need not to check
   int count;
   bool can_prune(Ctree&,Ctree&);
+
+  //top-K
+  void Top_K_search();
+  void Top_K_node_search(Ctree&);
+  std::priority_queue<pqdpt,vector<pqdpt>,comp> pq_pattern;
+  bool can_prune_Top_K(Ctree&);
+  double lambda;
+  void cooc_search_for_one(Ctree&);
+  void edge_grow_cooc_for_TopK(Ctree&,Ctree&);
+  int topK;
 };
 
 Graph toGraph(vector<DFSCode>&);

@@ -46,15 +46,34 @@ void Gspan::Crun(){
   can_grow_search();
   std::cout <<"CashTree Node size : " << TNnum <<std::endl;
 
-  //cooc search...
+ //cooc search...
   
+  if(!cooc) return;
+  count = 0;
+  pq_pattern = std::priority_queue<pqdpt,vector<pqdpt>,comp>();
+  Top_K_search();
+  std::cout << pq_pattern.top().value << std::endl;
+
+  cooc_is_opt = false;
+  opt_pat_cooc.gain = 0.0;
+  opt_pat_cooc.sumofsize = 0;
+  for(int i = 0; i < topK; ++i){
+    if(pq_pattern.empty()) break;
+    cooc_search_for_one(*pq_pattern.top().dptplace);
+    pq_pattern.pop();
+  }
+  std::cout << "cooc check count : "<<count << std::endl;
+
+  
+  //cooc search...
+  /*
   if(!cooc) return;
   std::cout <<"Cooc searching ..."  <<std::endl;
   cooc_is_opt = false;
   opt_pat_cooc.gain = 0.0;
   opt_pat_cooc.sumofsize = 0;
   CoocSearch();
-  
+  */
 }
 
 void Gspan::first_tree_make(){
@@ -473,4 +492,95 @@ bool Gspan::can_prune(Ctree& left,Ctree& right){
   }
 
   return false;
+}
+
+void Gspan::Top_K_search(){
+  //std::cout << "cash tree search..." << std::endl;
+  pattern.resize(0);
+  for(list<Ctree*>::iterator it = croot->one_edge_graphs.begin();it != croot->one_edge_graphs.end();++it){
+    pattern.push_back((*it)->pat.dcode);
+    Top_K_node_search(*(*it));
+    pattern.pop_back();
+  }
+}
+
+void Gspan::Top_K_node_search(Ctree& node){
+
+  if(node.can_dpt){
+    //std::cout << "skip" << std::endl;
+    if(can_prune_Top_K(node)) { return;}
+  }
+  //if(can_prune(node)) { return;}
+  
+  for(list<Ctree*>::iterator it = node.children.begin();it != node.children.end();++it){
+    pattern.push_back((*it)->pat.dcode);
+    Top_K_node_search(**it);
+    pattern.pop_back();
+  }
+}
+bool Gspan::can_prune_Top_K(Ctree& node){
+
+  double gain=0.0;
+  double upos=0.0;
+  double uneg=0.0;
+
+  gain=-wbias;
+  upos=-wbias;
+  uneg=wbias;
+
+  for(GraphToTracers::iterator it=node.g2tracers.begin();it!=node.g2tracers.end();++it){
+    int gid = it->first;
+    gain += 2 * corlab[gid] * weight[gid];
+    if(corlab[gid]>0){
+      upos += 2 * weight[gid];
+	}else{
+      uneg += 2 * weight[gid];
+    }
+  }
+  node.max_gain = std::max(upos,uneg);
+  if(fabs(opt_pat.gain) > node.max_gain ){ return true;}
+
+  double gain_abs = fabs(gain);
+  if(gain_abs > fabs(opt_pat.gain) || (fabs(gain_abs - fabs(opt_pat.gain))<1e-10 && pattern.size() < opt_pat.size)){
+    opt_pat.gain = gain;
+    opt_pat.optimalplace = &node;
+    opt_pat.size = pattern.size();
+  }
+  pqdpt p;
+  p.value = fabs(gain) + lambda * node.max_gain;
+  p.dptplace = &node;
+  pq_pattern.push(p);
+  
+  return false;
+}
+
+void Gspan::cooc_search_for_one(Ctree& p){
+  //edge_grow_before_cooc();
+  
+  pattern = p.pat.rebuild();
+  cpattern.resize(0);
+  opt_gain = opt_pat.gain;
+  for(list<Ctree*>::iterator it = croot->one_edge_graphs.begin();it != croot->one_edge_graphs.end();++it){
+    cpattern.push_back((*it)->pat.dcode);
+    edge_grow_cooc_for_TopK(p,*(*it));
+    cpattern.pop_back();
+  }
+  //std::cout << "cooc check count : "<<count << std::endl;
+
+
+}
+
+void Gspan::edge_grow_cooc_for_TopK(Ctree& left,Ctree& right){
+  if(right.max_gain < opt_gain) return;
+  if(pattern.size() + cpattern.size() > cmaxpat) return;
+
+  if(right.can_dpt){
+    count++;
+    if(can_prune(left,right)) return;
+  }
+  for(list<Ctree*>::iterator it = right.children.begin();it != right.children.end();++it){
+    cpattern.push_back((*it)->pat.dcode);
+    edge_grow_cooc_for_TopK(left,**it);
+    cpattern.pop_back();
+  }
 }
