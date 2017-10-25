@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
       topK = atoi (optarg);
       break;
     case 'l':
-      lambda = atoi (optarg);
+      lambda = atof (optarg);
       break;
     case 's':
       cmaxpat = atoi (optarg);
